@@ -1,0 +1,133 @@
+
+<!-- saved from url=(0017)http://jboard.tk/ -->
+<html><script type="text/javascript" src="chrome-extension://kajfghlhfkcocafkcjlajldicbikpgnp/catcher.js"><!-- script injected by Request Maker --></script><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+        <title>Camera Pan Controller</title>
+    </head>
+    
+    <body onload="onLoad()">
+        <script>    
+            var IP = "jboard.tk";
+            var PORT = 8888;            
+            var cameraStatus = "Offline";
+            var networkStatus = "Offline";
+            var heading = 90;   
+            var hasConnected = false;           
+            var socket;
+        
+            function onLoad(){
+                writeStatus();
+            }
+            
+            //==========[Network Stuff]==========//         
+            function toggleNetwork(){
+                if(networkStatus == "Offline"){
+                    connect();                  
+                } else {
+                    disconnect();
+                }
+            }
+            
+            function connect(){
+                ws = new WebSocket("ws://"+IP+":"+PORT+"/ws");          
+                ws.onopen = onConnect;
+                ws.onclose = onClose;
+                ws.onmessage = onMessage;
+            }
+            
+            function disconnect(){
+                ws.close();             
+            }
+            
+            function onConnect(evt){
+                document.getElementById("toggleNetwork").value="Disconnect";
+                networkStatus = "Online";
+                writeStatus();
+                hasConnected = true;
+            }
+                
+            function onClose(evt){
+                document.getElementById("toggleNetwork").value="Connect";
+                cameraStatus = "Offline";
+                networkStatus = "Offline";
+                writeStatus();
+            }
+            
+            function onMessage(evt){
+                if(evt.data.substring(0, 1) == "H"){ //Heading Change
+                    heading = parseInt(evt.data.substring(1, evt.data.length));
+                } else if(evt.data.substring(0, 1) == "C"){
+                    if(evt.data.substring(1, 2) == "1"){
+                        cameraStatus = "Online";
+                    } else {
+                        cameraStatus = "Offline";
+                    }
+                } else if(evt.data.substring(0, 1) == "A"){
+                    alert(evt.data.substring(1, evt.data.length));
+                }
+                writeStatus();
+            }           
+                    
+            //==========[Button Handler Stuff]==========//
+            
+            function onLeftClick(){
+                var headingChangeValue = parseInt(document.getElementById("degrees").value);
+                setHeading(heading-headingChangeValue);
+            }
+            
+            function setHeading(newHeading){                        
+                if(networkStatus == "Offline"){
+                    alert("You need to connect before changing camera heading!");
+                } else if (cameraStatus == "Offline"){
+                    alert("The camera is not connected yet!");
+                } else {
+                    if(newHeading < heading && heading <= 0){
+                        alert("You can't have a heading less than 0!");
+                        heading = 0;
+                    } else if(newHeading > heading && heading >= 180){
+                        alert("You can't have a heading more than 180!");
+                        heading = 180;
+                    } else {
+                        heading = newHeading;
+                    }
+                    writeStatus();
+                    ws.send("H"+heading);
+                }
+            }
+            
+            function onRightClick(){
+                var headingChangeValue = parseInt(document.getElementById("degrees").value);
+                setHeading(heading+headingChangeValue);
+            }       
+            
+            //==========[Misc Stuff]==========//
+            
+            function fetchStatus(){
+                
+            }
+            
+            function writeStatus(){
+                var statusElement = document.getElementById("status");
+                statusElement.innerHTML = "<b>Camera Status: </b>"+cameraStatus+
+                "<br><b>Network Status: </b>"+networkStatus+
+                "<br><b>Heading: </b>"+heading;
+            }
+            
+        </script>
+            
+        <center>
+            <h1>Camera Pan Controller</h1>
+            
+            <p id="status"><b>Camera Status: </b>Offline<br><b>Network Status: </b>Offline<br><b>Heading: </b>90</p>
+            
+            <input type="button" onclick="onLeftClick()" value="Left">
+            <input type="text" id="degrees" value="15">
+            <input type="button" onclick="onRightClick()" value="Right">
+            
+            <br><br>
+            
+            <input type="button" onclick="toggleNetwork()" id="toggleNetwork" value="Connect">
+            
+        </center>
+    
+
+</body></html>
